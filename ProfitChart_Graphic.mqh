@@ -26,8 +26,14 @@ bool InitializeGraphic(
       return false;
    }
 
+   //--- グラフの余白を調整（Y軸を右側に表示するため）
+   graphic.IndentLeft(30);    // 左余白を小さく
+   graphic.IndentRight(200);  // 右余白を大きく（Y軸用）
+   graphic.IndentUp(50);
+   graphic.IndentDown(100);   // 下余白を大きく（X軸の回転した文字用）
+
    //--- グラフの初期設定（背景黒、文字白）
-   graphic.BackgroundMain("損益チャート");
+   graphic.BackgroundMain("");  // タイトルは後で設定
    graphic.BackgroundColor(ColorToARGB(clrBlack, 255));
    graphic.BackgroundMainSize(24);  // タイトル文字サイズ
    graphic.BackgroundMainColor(ColorToARGB(clrWhite, 255));  // タイトル文字色を白に
@@ -39,20 +45,30 @@ bool InitializeGraphic(
    graphic.GridLineColor(ColorToARGB(clrDarkSlateGray, 100));  // 半透明の暗いグレー
    graphic.GridAxisLineColor(ColorToARGB(clrWhite, 255));  // 軸線は白
 
+   //--- 目盛りマーク（■-）を非表示
+   graphic.MajorMarkSize(0);
+
    //--- 軸の設定（Color()が軸線・数値・名前すべての色を制御）
    CAxis *x_axis = graphic.XAxis();
    CAxis *y_axis = graphic.YAxis();
 
    x_axis.Color(ColorToARGB(clrWhite, 255));  // X軸全体の色を白に
    y_axis.Color(ColorToARGB(clrWhite, 255));  // Y軸全体の色を白に
-   x_axis.ValuesSize(14);  // X軸ラベル文字サイズ
-   y_axis.ValuesSize(14);  // Y軸ラベル文字サイズ
-   x_axis.NameSize(16);    // X軸名文字サイズ
-   y_axis.NameSize(16);    // Y軸名文字サイズ
+   x_axis.ValuesSize(20);  // X軸目盛り文字サイズ
+   y_axis.ValuesSize(20);  // Y軸目盛り文字サイズ
+   x_axis.NameSize(22);    // X軸名文字サイズ
+   y_axis.NameSize(22);    // Y軸名文字サイズ
+
+   //--- X軸の目盛りを270度回転（縦向き）
+   x_axis.ValuesFontAngle(2700);  // 270度 = 縦書き
+
+   //--- Y軸の目盛り幅を広げる（省略されないように）
+   y_axis.ValuesWidth(100);  // デフォルト30から100に拡大
 
    //--- X軸を日時表示に設定
    x_axis.Type(AXIS_TYPE_DATETIME);
-   x_axis.ValuesDateTimeMode(TIME_DATE|TIME_MINUTES);  // 日付と時刻を表示
+   x_axis.ValuesDateTimeMode(TIME_DATE);  // 日付のみ表示（時刻なし）
+   x_axis.DefaultStep(604800);  // 1週間間隔でラベル表示（秒単位：7日×24時間×60分×60秒）
 
    return true;
 }
@@ -67,7 +83,8 @@ void UpdateGraphicChart(
    const long magic_number,
    const bool show_cumulative,
    const bool show_individual,
-   const bool show_cashback
+   const bool show_cashback,
+   ENUM_PERIOD_FILTER period
 )
 {
    int trade_count = ArraySize(trades);
@@ -128,14 +145,18 @@ void UpdateGraphicChart(
 
    //--- グラフタイトル
    string title = "損益チャート: " + symbol;
-   if(magic_number != 0)
+   if(magic_number == -1)
+      title += " (ALL)";
+   else
       title += " (MN:" + IntegerToString(magic_number) + ")";
    if(show_cashback)
       title += " [CB込]";
 
+   graphic.BackgroundMain(title);  // タイトルを設定
+
    //--- X軸とY軸のラベル
-   graphic.XAxis().Name("時間");
-   graphic.YAxis().Name("損益");
+   graphic.XAxis().Name("");        // X軸の名前を非表示
+   graphic.YAxis().Name("");        // Y軸の名前を非表示
 
    //--- チャートを描画
    graphic.CurvePlotAll();

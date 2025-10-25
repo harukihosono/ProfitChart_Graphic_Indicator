@@ -63,8 +63,8 @@ bool LoadTradeHistoryMT5(
       string deal_symbol = HistoryDealGetString(ticket, DEAL_SYMBOL);
       if(deal_symbol != symbol) continue;
 
-      //--- マジックナンバーチェック
-      if(magic_number != 0)
+      //--- マジックナンバーチェック（-1=全て表示）
+      if(magic_number != -1)
       {
          long magic = HistoryDealGetInteger(ticket, DEAL_MAGIC);
          if(magic != magic_number) continue;
@@ -140,7 +140,7 @@ bool LoadTradeHistoryMT5(
    AggregateTradesByTime(raw_trades, trades, period);
 
    last_deal_count = ArraySize(trades);
-   Print("取引データ読み込み完了: ", deal_count, "件 → 集計後: ", last_deal_count, "件");
+   // Print("取引データ読み込み完了: ", deal_count, "件 → 集計後: ", last_deal_count, "件");
    return true;
 }
 //+------------------------------------------------------------------+

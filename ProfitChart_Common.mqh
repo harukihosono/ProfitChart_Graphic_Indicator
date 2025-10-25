@@ -27,6 +27,17 @@ struct TradeData
    int trade_number;
 };
 
+//--- 統計情報構造体
+struct TradeStatistics
+{
+   double profit_factor;     // PF (Profit Factor)
+   double max_drawdown;      // 最大ドローダウン
+   double total_lots;        // 総ロット数
+   int trade_count;          // 取引回数
+   double total_profit;      // 総利益
+   double total_loss;        // 総損失
+};
+
 //+------------------------------------------------------------------+
 //| 期間から開始日時を取得                                               |
 //+------------------------------------------------------------------+
@@ -167,5 +178,91 @@ void AggregateTradesByTime(
       aggregated_trades[i].cumulative = cumulative;
       aggregated_trades[i].trade_number = i + 1;
    }
+}
+
+//+------------------------------------------------------------------+
+//| 取引統計を計算                                                      |
+//+------------------------------------------------------------------+
+void CalculateTradeStatistics(
+   const TradeData &trades[],
+   TradeStatistics &stats,
+   const string symbol,
+   const long magic_number,
+   ENUM_PERIOD_FILTER period
+)
+{
+   // 初期化
+   stats.profit_factor = 0.0;
+   stats.max_drawdown = 0.0;
+   stats.total_lots = 0.0;
+   stats.trade_count = 0;
+   stats.total_profit = 0.0;
+   stats.total_loss = 0.0;
+
+   int trade_count = ArraySize(trades);
+   if(trade_count == 0) return;
+
+   // 利益と損失を集計
+   for(int i = 0; i < trade_count; i++)
+   {
+      if(trades[i].profit > 0)
+         stats.total_profit += trades[i].profit;
+      else if(trades[i].profit < 0)
+         stats.total_loss += MathAbs(trades[i].profit);
+   }
+
+   // Profit Factor計算
+   if(stats.total_loss > 0)
+      stats.profit_factor = stats.total_profit / stats.total_loss;
+   else
+      stats.profit_factor = (stats.total_profit > 0) ? 999.99 : 0.0;
+
+   // 最大ドローダウン計算
+   double peak = 0.0;
+   for(int i = 0; i < trade_count; i++)
+   {
+      if(trades[i].cumulative > peak)
+         peak = trades[i].cumulative;
+
+      double drawdown = peak - trades[i].cumulative;
+      if(drawdown > stats.max_drawdown)
+         stats.max_drawdown = drawdown;
+   }
+
+   // 取引回数とロット数を履歴から直接カウント
+   datetime start_time = GetStartDateFromPeriod(period);
+   datetime end_time = TimeCurrent();
+
+   if(!HistorySelect(start_time, end_time))
+      return;
+
+   int total_deals = HistoryDealsTotal();
+   int actual_trade_count = 0;
+
+   for(int i = 0; i < total_deals; i++)
+   {
+      ulong ticket = HistoryDealGetTicket(i);
+      if(ticket == 0) continue;
+
+      string deal_symbol = HistoryDealGetString(ticket, DEAL_SYMBOL);
+      if(deal_symbol != symbol) continue;
+
+      long entry = HistoryDealGetInteger(ticket, DEAL_ENTRY);
+      if(entry != DEAL_ENTRY_OUT && entry != DEAL_ENTRY_INOUT) continue;
+
+      if(magic_number != -1)
+      {
+         long magic = HistoryDealGetInteger(ticket, DEAL_MAGIC);
+         if(magic != magic_number) continue;
+      }
+
+      // 実際の取引回数をカウント
+      actual_trade_count++;
+
+      double volume = HistoryDealGetDouble(ticket, DEAL_VOLUME);
+      stats.total_lots += volume;
+   }
+
+   stats.trade_count = actual_trade_count;
 }
 //+------------------------------------------------------------------+

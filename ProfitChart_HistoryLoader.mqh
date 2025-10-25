@@ -117,7 +117,8 @@ bool LoadTradeHistoryMT5(
    }
 
    //--- 累積計算してトレードデータ配列に格納
-   ArrayResize(trades, deal_count);
+   TradeData raw_trades[];
+   ArrayResize(raw_trades, deal_count);
    double cumulative = 0.0;
 
    for(int i = 0; i < deal_count; i++)
@@ -128,15 +129,18 @@ bool LoadTradeHistoryMT5(
 
       cumulative += profit_with_cb;
 
-      trades[i].time = temp_deals[i].time;
-      trades[i].profit = temp_deals[i].profit;
-      trades[i].cashback = temp_deals[i].cashback;
-      trades[i].cumulative = cumulative;
-      trades[i].trade_number = i + 1;
+      raw_trades[i].time = temp_deals[i].time;
+      raw_trades[i].profit = temp_deals[i].profit;
+      raw_trades[i].cashback = temp_deals[i].cashback;
+      raw_trades[i].cumulative = cumulative;
+      raw_trades[i].trade_number = i + 1;
    }
 
-   last_deal_count = deal_count;
-   Print("取引データ読み込み完了: ", deal_count, "件");
+   //--- 期間に応じてデータを集計
+   AggregateTradesByTime(raw_trades, trades, period);
+
+   last_deal_count = ArraySize(trades);
+   Print("取引データ読み込み完了: ", deal_count, "件 → 集計後: ", last_deal_count, "件");
    return true;
 }
 //+------------------------------------------------------------------+

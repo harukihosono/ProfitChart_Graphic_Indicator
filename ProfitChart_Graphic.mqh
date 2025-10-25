@@ -50,6 +50,10 @@ bool InitializeGraphic(
    x_axis.NameSize(16);    // X軸名文字サイズ
    y_axis.NameSize(16);    // Y軸名文字サイズ
 
+   //--- X軸を日時表示に設定
+   x_axis.Type(AXIS_TYPE_DATETIME);
+   x_axis.ValuesDateTimeMode(TIME_DATE|TIME_MINUTES);  // 日付と時刻を表示
+
    return true;
 }
 
@@ -75,7 +79,7 @@ void UpdateGraphicChart(
       return;
    }
 
-   //--- X軸用配列（トレード番号）
+   //--- X軸用配列（時間）
    double x_data[];
    ArrayResize(x_data, trade_count);
 
@@ -85,10 +89,10 @@ void UpdateGraphicChart(
    ArrayResize(y_cumulative, trade_count);
    ArrayResize(y_individual, trade_count);
 
-   //--- データを配列にコピー
+   //--- データを配列にコピー（X軸は時間）
    for(int i = 0; i < trade_count; i++)
    {
-      x_data[i] = (double)trades[i].trade_number;
+      x_data[i] = (double)trades[i].time;  // 時間を使用
       y_cumulative[i] = trades[i].cumulative;
 
       double profit_val = show_cashback ?
@@ -130,7 +134,7 @@ void UpdateGraphicChart(
       title += " [CB込]";
 
    //--- X軸とY軸のラベル
-   graphic.XAxis().Name("トレード番号");
+   graphic.XAxis().Name("時間");
    graphic.YAxis().Name("損益");
 
    //--- チャートを描画

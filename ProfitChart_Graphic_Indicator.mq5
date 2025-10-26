@@ -467,42 +467,6 @@ void DeleteMagicNumberButtons()
       ObjectDelete(0, btn_name);
    }
 }
-//+------------------------------------------------------------------+
-//| カンマ区切りフォーマット関数                                        |
-//+------------------------------------------------------------------+
-string FormatNumberWithCommas(double value)
-{
-   string result = "";
-   string num_str = DoubleToString(value, 0);
-   int len = StringLen(num_str);
-   int count = 0;
-
-   // 負の数の処理
-   bool is_negative = false;
-   if(StringSubstr(num_str, 0, 1) == "-")
-   {
-      is_negative = true;
-      num_str = StringSubstr(num_str, 1);
-      len = StringLen(num_str);
-   }
-
-   // 右から左にカンマを挿入
-   for(int i = len - 1; i >= 0; i--)
-   {
-      if(count == 3)
-      {
-         result = "," + result;
-         count = 0;
-      }
-      result = StringSubstr(num_str, i, 1) + result;
-      count++;
-   }
-
-   if(is_negative)
-      result = "-" + result;
-
-   return result;
-}
 
 //+------------------------------------------------------------------+
 //| 統計情報テーブルを作成                                              |

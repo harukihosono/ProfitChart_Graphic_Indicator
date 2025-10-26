@@ -22,7 +22,7 @@ input double InpCashbackPer001Lot = 10.0;       // 0.01ロットあたりのキ�
 input int    InpChartWidth = 1200;              // チャート幅（ピクセル）
 input int    InpChartHeight = 800;              // チャート高さ（ピクセル）
 input int    InpChartX = 50;                    // チャートX位置（右からのピクセル）
-input int    InpChartY = 80;                    // チャートY位置（上からのピクセル）
+input int    InpChartY = 180;                   // チャートY位置（上からのピクセル）
 input bool   InpShowCumulative = true;          // 累積損益を表示
 input bool   InpShowIndividual = true;          // 個別損益を表示
 input bool   InpShowCashback = false;           // キャッシュバック込みで表示
@@ -49,9 +49,18 @@ long g_magicNumbers[];  // 利用可能なマジックナンバーのリスト
 //--- ボタン名の定数（マジックナンバー）
 #define BTN_MN_PREFIX  "ProfitChart_Btn_MN_"
 
+//--- HTML出力ボタン
+#define BTN_HTML  "ProfitChart_Btn_HTML"
+#define BTN_OPEN_FOLDER  "ProfitChart_Btn_OpenFolder"
+
 //--- 統計テーブルのラベル名
 #define LBL_STATS_BASE "ProfitChart_Stats_"
 #define LBL_STATS_BG "ProfitChart_Stats_BG"
+
+//--- Windows API for opening files
+#import "shell32.dll"
+   int ShellExecuteW(int hwnd, string lpOperation, string lpFile, string lpParameters, string lpDirectory, int nShowCmd);
+#import
 
 //+------------------------------------------------------------------+
 //| カスタムインジケーター初期化関数                                      |
@@ -82,6 +91,8 @@ int OnInit()
    //--- ボタンを作成
    CreatePeriodButtons();
    CreateMagicNumberButtons();
+   CreateHTMLButton();
+   CreateFolderButton();
 
    //--- チャート更新
    UpdateChart();
@@ -100,6 +111,8 @@ void OnDeinit(const int reason)
    //--- ボタンを削除
    DeletePeriodButtons();
    DeleteMagicNumberButtons();
+   DeleteHTMLButton();
+   DeleteFolderButton();
 
    //--- 統計テーブルを削除
    DeleteStatsTable();
@@ -212,6 +225,18 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
          }
       }
 
+      //--- HTMLボタンのクリック処理
+      if(sparam == BTN_HTML)
+      {
+         GenerateAndOpenHTML();
+      }
+
+      //--- フォルダを開くボタンのクリック処理
+      if(sparam == BTN_OPEN_FOLDER)
+      {
+         OpenReportsFolder();
+      }
+
       //--- ボタンの選択状態をリセット
       ObjectSetInteger(0, sparam, OBJPROP_STATE, false);
       ChartRedraw();
@@ -227,7 +252,7 @@ void CreatePeriodButtons()
    int btn_height = 25;
    int btn_spacing = 5;
    int start_x = InpChartX;
-   int start_y = InpChartY - 35;
+   int start_y = InpChartY - 70;  // 上の行に配置
 
    CreateButton(BTN_1D,   "1D",   start_x + (btn_width + btn_spacing) * 0, start_y, btn_width, btn_height);
    CreateButton(BTN_1W,   "1W",   start_x + (btn_width + btn_spacing) * 1, start_y, btn_width, btn_height);
@@ -354,11 +379,11 @@ void GetUniqueMagicNumbers()
 //+------------------------------------------------------------------+
 void CreateMagicNumberButtons()
 {
-   int btn_width = 120;  // 80から120に増加
+   int btn_width = 120;
    int btn_height = 25;
    int btn_spacing = 5;
-   int start_x = InpChartX + 540;  // 期間ボタンの右側
-   int start_y = InpChartY - 35;
+   int start_x = InpChartX;  // 左端から開始
+   int start_y = InpChartY - 35;  // 下の行に配置
 
    int count = ArraySize(g_magicNumbers);
    for(int i = 0; i < count; i++)
@@ -505,5 +530,344 @@ void DeleteStatsTable()
    ObjectDelete(0, LBL_STATS_BASE + "Trades");
    ObjectDelete(0, LBL_STATS_BASE + "Profit");
    ObjectDelete(0, LBL_STATS_BASE + "Loss");
+}
+
+//+------------------------------------------------------------------+
+//| HTML出力ボタンを作成                                               |
+//+------------------------------------------------------------------+
+void CreateHTMLButton()
+{
+   int btn_width = 120;
+   int btn_height = 25;
+   int x = InpChartX + InpChartWidth - btn_width - 10;  // チャートの右上
+   int y = InpChartY - 70;  // 期間ボタンと同じ高さ
+
+   CreateButton(BTN_HTML, "HTML Report", x, y, btn_width, btn_height);
+   ObjectSetInteger(0, BTN_HTML, OBJPROP_BGCOLOR, clrDarkGreen);
+}
+
+//+------------------------------------------------------------------+
+//| HTML出力ボタンを削除                                               |
+//+------------------------------------------------------------------+
+void DeleteHTMLButton()
+{
+   ObjectDelete(0, BTN_HTML);
+}
+
+//+------------------------------------------------------------------+
+//| フォルダを開くボタンを作成                                          |
+//+------------------------------------------------------------------+
+void CreateFolderButton()
+{
+   int btn_width = 120;
+   int btn_height = 25;
+   int x = InpChartX + InpChartWidth - (btn_width * 2) - 20;  // HTML出力ボタンの左側
+   int y = InpChartY - 70;  // 期間ボタンと同じ高さ
+
+   CreateButton(BTN_OPEN_FOLDER, "Open Folder", x, y, btn_width, btn_height);
+   ObjectSetInteger(0, BTN_OPEN_FOLDER, OBJPROP_BGCOLOR, clrDarkBlue);
+}
+
+//+------------------------------------------------------------------+
+//| フォルダを開くボタンを削除                                          |
+//+------------------------------------------------------------------+
+void DeleteFolderButton()
+{
+   ObjectDelete(0, BTN_OPEN_FOLDER);
+}
+
+//+------------------------------------------------------------------+
+//| Reportsフォルダを開く                                              |
+//+------------------------------------------------------------------+
+void OpenReportsFolder()
+{
+   string folder_path = TerminalInfoString(TERMINAL_DATA_PATH) + "\\MQL5\\Files\\Reports";
+
+   // フォルダが存在しない場合は作成
+   if(!FolderCreate("Reports", FILE_COMMON))
+   {
+      int error_code = GetLastError();
+      if(error_code != 0 && error_code != 5003)
+      {
+         Alert("Failed to create Reports folder: ", error_code);
+         return;
+      }
+   }
+
+   // エクスプローラーでフォルダを開く
+   int result = ShellExecuteW(0, "open", folder_path, "", "", 1);
+   if(result <= 32)
+   {
+      Alert("Failed to open folder.\nPath: " + folder_path);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Generate HTML report and open in browser                         |
+//+------------------------------------------------------------------+
+void GenerateAndOpenHTML()
+{
+   // Calculate statistics
+   TradeStatistics stats;
+   CalculateTradeStatistics(g_trades, stats, g_symbol, g_currentMagicNumber, g_currentPeriod);
+
+   // Create Reports folder
+   string folder = "Reports";
+   if(!FolderCreate(folder, FILE_COMMON))
+   {
+      // Error code 5003 means folder already exists - that's OK
+      int error_code = GetLastError();
+      if(error_code != 0 && error_code != 5003)
+      {
+         Print("Folder creation error: ", error_code);
+      }
+   }
+
+   // Generate filename (save in Reports folder)
+   string timestamp = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
+   StringReplace(timestamp, ":", "");
+   StringReplace(timestamp, " ", "_");
+   string filename = folder + "\\ProfitChart_Report_" + timestamp + ".html";
+   string filepath = TerminalInfoString(TERMINAL_DATA_PATH) + "\\MQL5\\Files\\" + filename;
+
+   // Generate HTML content
+   string html = GenerateHTMLContent(stats);
+
+   // Write to file
+   int file_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
+   if(file_handle == INVALID_HANDLE)
+   {
+      Alert("Failed to create HTML file: ", GetLastError());
+      return;
+   }
+
+   FileWriteString(file_handle, html);
+   FileClose(file_handle);
+
+   Print("HTML report generated: ", filepath);
+
+   // Open HTML file automatically in browser
+   int result = ShellExecuteW(0, "open", filepath, "", "", 1);
+   if(result <= 32)
+   {
+      // If failed to open, show path in alert
+      Alert("HTML report generated.\nPlease open manually:\n" + filepath);
+   }
+   else
+   {
+      Alert("HTML report generated and opened in browser!");
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Generate HTML content                                            |
+//+------------------------------------------------------------------+
+string GenerateHTMLContent(const TradeStatistics &stats)
+{
+   string html = "";
+
+   html += "<!DOCTYPE html>\n";
+   html += "<html lang='en'>\n";
+   html += "<head>\n";
+   html += "<meta charset='UTF-8'>\n";
+   html += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n";
+   html += "<title>Profit Report - " + g_symbol + "</title>\n";
+   html += "<script src='https://cdn.jsdelivr.net/npm/chart.js'></script>\n";
+   html += "<style>\n";
+   html += "* { margin: 0; padding: 0; box-sizing: border-box; }\n";
+   html += "body { font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; padding: 30px 40px; }\n";
+   html += "h1 { color: #ffcc00; border-bottom: 2px solid #ffcc00; padding-bottom: 15px; margin-bottom: 10px; font-size: 32px; }\n";
+   html += "h2 { color: #ffcc00; margin-top: 35px; margin-bottom: 20px; font-size: 24px; }\n";
+   html += ".container { max-width: 1600px; margin: 0 auto; }\n";
+   html += ".header-info { margin-bottom: 30px; color: #aaa; font-size: 14px; }\n";
+   html += ".stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin: 20px 0; }\n";
+   html += ".stat-card { background: #2a2a2a; padding: 18px; border-radius: 8px; border: 1px solid #444; text-align: center; }\n";
+   html += ".stat-label { font-size: 13px; color: #aaa; margin-bottom: 8px; }\n";
+   html += ".stat-value { font-size: 22px; font-weight: bold; color: #ffcc00; }\n";
+   html += ".chart-container { background: #2a2a2a; padding: 25px; border-radius: 8px; margin: 20px 0; border: 1px solid #444; height: 500px; }\n";
+   html += "canvas { max-height: 450px; }\n";
+   html += ".table-container { margin: 20px 0; }\n";
+   html += "table { width: 100%; border-collapse: collapse; background: #2a2a2a; }\n";
+   html += "th { background: #333; color: #ffcc00; padding: 12px; text-align: left; border: 1px solid #444; font-size: 14px; }\n";
+   html += "td { padding: 10px 12px; border: 1px solid #444; font-size: 13px; }\n";
+   html += "tr:nth-child(even) { background: #252525; }\n";
+   html += "tr:hover { background: #2f2f2f; }\n";
+   html += ".profit { color: #00ff00; font-weight: 500; }\n";
+   html += ".loss { color: #ff4444; font-weight: 500; }\n";
+   html += "td:first-child { text-align: center; color: #aaa; }\n";
+   html += "td:nth-child(3), td:nth-child(4) { text-align: right; font-family: 'Courier New', monospace; }\n";
+   html += "</style>\n";
+   html += "</head>\n";
+   html += "<body>\n";
+   html += "<div class='container'>\n";
+
+   // Title
+   string title = "Profit Report: " + g_symbol;
+   if(g_currentMagicNumber == -1)
+      title += " (ALL)";
+   else
+      title += " (MN:" + IntegerToString(g_currentMagicNumber) + ")";
+   html += "<h1>" + title + "</h1>\n";
+   html += "<div class='header-info'>Generated: " + TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS) + "</div>\n";
+
+   // Statistics Cards
+   html += "<h2>Statistics</h2>\n";
+   html += "<div class='stats-grid'>\n";
+
+   html += "<div class='stat-card'>\n";
+   html += "<div class='stat-label'>Profit Factor</div>\n";
+   html += "<div class='stat-value'>" + DoubleToString(stats.profit_factor, 2) + "</div>\n";
+   html += "</div>\n";
+
+   html += "<div class='stat-card'>\n";
+   html += "<div class='stat-label'>Max Drawdown</div>\n";
+   html += "<div class='stat-value loss'>-" + FormatNumberWithCommas(stats.max_drawdown) + "</div>\n";
+   html += "</div>\n";
+
+   html += "<div class='stat-card'>\n";
+   html += "<div class='stat-label'>Total Lots</div>\n";
+   html += "<div class='stat-value'>" + DoubleToString(stats.total_lots, 2) + "</div>\n";
+   html += "</div>\n";
+
+   html += "<div class='stat-card'>\n";
+   html += "<div class='stat-label'>Trade Count</div>\n";
+   html += "<div class='stat-value'>" + IntegerToString(stats.trade_count) + "</div>\n";
+   html += "</div>\n";
+
+   html += "<div class='stat-card'>\n";
+   html += "<div class='stat-label'>Total Profit</div>\n";
+   html += "<div class='stat-value profit'>" + FormatNumberWithCommas(stats.total_profit) + "</div>\n";
+   html += "</div>\n";
+
+   html += "<div class='stat-card'>\n";
+   html += "<div class='stat-label'>Total Loss</div>\n";
+   html += "<div class='stat-value loss'>-" + FormatNumberWithCommas(stats.total_loss) + "</div>\n";
+   html += "</div>\n";
+
+   html += "</div>\n";
+
+   // Chart
+   html += "<h2>Profit Chart</h2>\n";
+   html += "<div class='chart-container'>\n";
+   html += "<canvas id='profitChart'></canvas>\n";
+   html += "</div>\n";
+
+   // Trade History Table
+   html += "<h2>Trade History</h2>\n";
+   html += "<div class='table-container'>\n";
+   html += "<table>\n";
+   html += "<thead>\n";
+   html += "<tr>\n";
+   html += "<th>#</th>\n";
+   html += "<th>Date/Time</th>\n";
+   html += "<th>Individual P/L</th>\n";
+   html += "<th>Cumulative P/L</th>\n";
+   html += "</tr>\n";
+   html += "</thead>\n";
+   html += "<tbody>\n";
+
+   int trade_count = ArraySize(g_trades);
+   // Determine if we should show time based on period
+   bool show_time = (g_currentPeriod == PERIOD_1D || g_currentPeriod == PERIOD_1W);
+   int time_format = show_time ? (TIME_DATE|TIME_SECONDS) : TIME_DATE;
+
+   for(int i = 0; i < trade_count && i < 1000; i++)  // Display up to 1000 trades
+   {
+      string profit_class = (g_trades[i].profit >= 0) ? "profit" : "loss";
+      html += "<tr>\n";
+      html += "<td>" + IntegerToString(i + 1) + "</td>\n";
+      html += "<td>" + TimeToString(g_trades[i].time, time_format) + "</td>\n";
+      html += "<td class='" + profit_class + "'>" + FormatNumberWithCommas(g_trades[i].profit) + "</td>\n";
+      html += "<td>" + FormatNumberWithCommas(g_trades[i].cumulative) + "</td>\n";
+      html += "</tr>\n";
+   }
+
+   html += "</tbody>\n";
+   html += "</table>\n";
+   html += "</div>\n";
+
+   // Chart.js script
+   html += "<script>\n";
+   html += "const ctx = document.getElementById('profitChart').getContext('2d');\n";
+   html += "const chart = new Chart(ctx, {\n";
+   html += "  type: 'line',\n";
+   html += "  data: {\n";
+   html += "    labels: [";
+
+   // X-axis labels (trade index)
+   for(int i = 0; i < trade_count; i++)
+   {
+      if(i > 0) html += ", ";
+      html += "'" + IntegerToString(i + 1) + "'";
+   }
+   html += "],\n";
+
+   html += "    datasets: [{\n";
+   html += "      label: 'Cumulative P/L',\n";
+   html += "      data: [";
+
+   // Y-axis data (cumulative P/L)
+   for(int i = 0; i < trade_count; i++)
+   {
+      if(i > 0) html += ", ";
+      html += DoubleToString(g_trades[i].cumulative, 2);
+   }
+   html += "],\n";
+
+   html += "      borderColor: '#ffcc00',\n";
+   html += "      backgroundColor: 'rgba(255, 204, 0, 0.1)',\n";
+   html += "      borderWidth: 2,\n";
+   html += "      fill: true,\n";
+   html += "      tension: 0.1\n";
+   html += "    }]\n";
+   html += "  },\n";
+   html += "  options: {\n";
+   html += "    responsive: true,\n";
+   html += "    maintainAspectRatio: false,\n";
+   html += "    plugins: {\n";
+   html += "      legend: { labels: { color: '#fff' } },\n";
+   html += "      title: { display: false },\n";
+   html += "      tooltip: {\n";
+   html += "        callbacks: {\n";
+   html += "          title: function(context) {\n";
+   html += "            const dates = [";
+
+   // Add date/time array for tooltip
+   for(int i = 0; i < trade_count; i++)
+   {
+      if(i > 0) html += ", ";
+      html += "'" + TimeToString(g_trades[i].time, TIME_DATE|TIME_SECONDS) + "'";
+   }
+
+   html += "];\n";
+   html += "            return 'Trade #' + context[0].label + ' - ' + dates[context[0].dataIndex];\n";
+   html += "          },\n";
+   html += "          label: function(context) {\n";
+   html += "            return 'Cumulative P/L: ' + context.parsed.y.toLocaleString();\n";
+   html += "          }\n";
+   html += "        }\n";
+   html += "      }\n";
+   html += "    },\n";
+   html += "    scales: {\n";
+   html += "      x: {\n";
+   html += "        title: { display: true, text: 'Trade Number', color: '#fff' },\n";
+   html += "        ticks: { color: '#aaa', maxRotation: 45, minRotation: 45 },\n";
+   html += "        grid: { color: '#333' }\n";
+   html += "      },\n";
+   html += "      y: {\n";
+   html += "        title: { display: true, text: 'Profit/Loss', color: '#fff' },\n";
+   html += "        ticks: { color: '#aaa' },\n";
+   html += "        grid: { color: '#333' }\n";
+   html += "      }\n";
+   html += "    }\n";
+   html += "  }\n";
+   html += "});\n";
+   html += "</script>\n";
+
+   html += "</div>\n";
+   html += "</body>\n";
+   html += "</html>\n";
+
+   return html;
 }
 //+------------------------------------------------------------------+

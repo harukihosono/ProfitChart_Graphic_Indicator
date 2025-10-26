@@ -1,6 +1,6 @@
-*.ex5
 *.log
 *.png
 *.ps1
-.claude/
 *.ex4
+*.ex5
+.claude/

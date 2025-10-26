@@ -200,18 +200,20 @@ private:
 
       // 横線（Y軸グリッド）
       int num_h_lines = 8;
-      for(int i = 0; i <= num_h_lines; i++)
+      int hi;
+      for(hi = 0; hi <= num_h_lines; hi++)
       {
-         double value = m_min_value + (m_max_value - m_min_value) * i / num_h_lines;
+         double value = m_min_value + (m_max_value - m_min_value) * hi / num_h_lines;
          int y = ValueToY(value);
          m_canvas.Line(m_margin_left, y, m_width - m_margin_right, y, grid_color);
       }
 
       // 縦線（X軸グリッド）
       int num_v_lines = 10;
-      for(int i = 0; i <= num_v_lines; i++)
+      int vi;
+      for(vi = 0; vi <= num_v_lines; vi++)
       {
-         datetime time = m_min_time + (datetime)((m_max_time - m_min_time) * i / num_v_lines);
+         datetime time = m_min_time + (datetime)((m_max_time - m_min_time) * vi / num_v_lines);
          int x = TimeToX(time);
          m_canvas.Line(x, m_margin_top, x, m_height - m_margin_bottom, grid_color);
       }
@@ -234,24 +236,26 @@ private:
       // Y軸のラベル
       m_canvas.FontSet("Arial", 16);
       int num_labels = 8;
-      for(int i = 0; i <= num_labels; i++)
+      int yi;
+      for(yi = 0; yi <= num_labels; yi++)
       {
-         double value = m_min_value + (m_max_value - m_min_value) * i / num_labels;
+         double value = m_min_value + (m_max_value - m_min_value) * yi / num_labels;
          int y = ValueToY(value);
 
-         string label = FormatNumberWithCommas(value);
-         m_canvas.TextOut(m_width - m_margin_right + 10, y - 8, label, text_color);
+         string y_label = FormatNumberWithCommas(value);
+         m_canvas.TextOut(m_width - m_margin_right + 10, y - 8, y_label, text_color);
       }
 
       // X軸のラベル（日付）
       int num_date_labels = 5;
-      for(int i = 0; i <= num_date_labels; i++)
+      int xi;
+      for(xi = 0; xi <= num_date_labels; xi++)
       {
-         datetime time = m_min_time + (datetime)((m_max_time - m_min_time) * i / num_date_labels);
+         datetime time = m_min_time + (datetime)((m_max_time - m_min_time) * xi / num_date_labels);
          int x = TimeToX(time);
 
-         string label = TimeToString(time, TIME_DATE);
-         m_canvas.TextOut(x - 40, m_height - m_margin_bottom + 10, label, text_color);
+         string x_label = TimeToString(time, TIME_DATE);
+         m_canvas.TextOut(x - 40, m_height - m_margin_bottom + 10, x_label, text_color);
       }
    }
 

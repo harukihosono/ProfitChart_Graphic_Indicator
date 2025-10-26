@@ -1,15 +1,21 @@
 //+------------------------------------------------------------------+
 //|                                        ProfitChart_Graphic.mqh   |
-//|                          CGraphic表示ロジック（MQL5専用）          |
+//|                          グラフィック表示ロジック（MT4/MT5共通）    |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025"
 #property link      ""
 
-#include "Graphic.mqh"
 #include "ProfitChart_Common.mqh"
 
+#ifdef __MQL5__
+   #include "Graphic.mqh"
+#else
+   #include "ProfitChart_Canvas_MT4.mqh"
+#endif
+
+#ifdef __MQL5__
 //+------------------------------------------------------------------+
-//| グラフィック初期化                                                 |
+//| グラフィック初期化（MT5版）                                        |
 //+------------------------------------------------------------------+
 bool InitializeGraphic(
    CGraphic &graphic,
@@ -162,4 +168,43 @@ void UpdateGraphicChart(
    graphic.CurvePlotAll();
    graphic.Update();
 }
+#endif // __MQL5__
+
+#ifdef __MQL4__
+//+------------------------------------------------------------------+
+//| グラフィック初期化（MT4版）                                        |
+//+------------------------------------------------------------------+
+bool InitializeGraphic(
+   CProfitChartCanvas &canvas,
+   const int chart_x,
+   const int chart_y,
+   const int chart_width,
+   const int chart_height
+)
+{
+   if(!canvas.Create("ProfitChart", chart_x, chart_y, chart_width, chart_height))
+   {
+      Print("Canvasオブジェクトの作成に失敗");
+      return false;
+   }
+   return true;
+}
+
+//+------------------------------------------------------------------+
+//| チャートを更新（MT4版）                                             |
+//+------------------------------------------------------------------+
+void UpdateGraphicChart(
+   CProfitChartCanvas &canvas,
+   const TradeData &trades[],
+   const string symbol,
+   const long magic_number,
+   const bool show_cumulative,
+   const bool show_individual,
+   const bool show_cashback,
+   ENUM_PERIOD_FILTER period
+)
+{
+   canvas.DrawChart(trades, symbol, magic_number, show_cumulative, show_individual, show_cashback);
+}
+#endif // __MQL4__
 //+------------------------------------------------------------------+

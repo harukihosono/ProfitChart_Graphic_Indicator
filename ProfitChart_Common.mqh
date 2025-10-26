@@ -147,23 +147,24 @@ void AggregateTradesByTime(
    }
 
    //--- 時系列順にソート（バブルソート）
-   for(int i = 0; i < bucket_count - 1; i++)
+   int si, sj;
+   for(si = 0; si < bucket_count - 1; si++)
    {
-      for(int j = i + 1; j < bucket_count; j++)
+      for(sj = si + 1; sj < bucket_count; sj++)
       {
-         if(time_buckets[i] > time_buckets[j])
+         if(time_buckets[si] > time_buckets[sj])
          {
-            datetime temp_time = time_buckets[i];
-            double temp_profit = profit_sums[i];
-            double temp_cashback = cashback_sums[i];
+            datetime temp_time = time_buckets[si];
+            double temp_profit = profit_sums[si];
+            double temp_cashback = cashback_sums[si];
 
-            time_buckets[i] = time_buckets[j];
-            profit_sums[i] = profit_sums[j];
-            cashback_sums[i] = cashback_sums[j];
+            time_buckets[si] = time_buckets[sj];
+            profit_sums[si] = profit_sums[sj];
+            cashback_sums[si] = cashback_sums[sj];
 
-            time_buckets[j] = temp_time;
-            profit_sums[j] = temp_profit;
-            cashback_sums[j] = temp_cashback;
+            time_buckets[sj] = temp_time;
+            profit_sums[sj] = temp_profit;
+            cashback_sums[sj] = temp_cashback;
          }
       }
    }
@@ -172,14 +173,15 @@ void AggregateTradesByTime(
    ArrayResize(aggregated_trades, bucket_count);
    double cumulative = 0.0;
 
-   for(int i = 0; i < bucket_count; i++)
+   int ci;
+   for(ci = 0; ci < bucket_count; ci++)
    {
-      aggregated_trades[i].time = time_buckets[i];
-      aggregated_trades[i].profit = profit_sums[i];
-      aggregated_trades[i].cashback = cashback_sums[i];
-      cumulative += profit_sums[i];
-      aggregated_trades[i].cumulative = cumulative;
-      aggregated_trades[i].trade_number = i + 1;
+      aggregated_trades[ci].time = time_buckets[ci];
+      aggregated_trades[ci].profit = profit_sums[ci];
+      aggregated_trades[ci].cashback = cashback_sums[ci];
+      cumulative += profit_sums[ci];
+      aggregated_trades[ci].cumulative = cumulative;
+      aggregated_trades[ci].trade_number = ci + 1;
    }
 }
 
@@ -225,12 +227,13 @@ void CalculateTradeStatistics(
 
    // 最大ドローダウン計算
    double peak = 0.0;
-   for(int i = 0; i < trade_count; i++)
+   int di;
+   for(di = 0; di < trade_count; di++)
    {
-      if(trades[i].cumulative > peak)
-         peak = trades[i].cumulative;
+      if(trades[di].cumulative > peak)
+         peak = trades[di].cumulative;
 
-      double drawdown = peak - trades[i].cumulative;
+      double drawdown = peak - trades[di].cumulative;
       if(drawdown > stats.max_drawdown)
          stats.max_drawdown = drawdown;
    }
@@ -238,16 +241,18 @@ void CalculateTradeStatistics(
    // 取引回数、ロット数、コミッション、スワップを履歴から直接カウント
    datetime start_time = GetStartDateFromPeriod(period);
    datetime end_time = TimeCurrent();
+   int actual_trade_count = 0;
 
+#ifdef __MQL5__
    if(!HistorySelect(start_time, end_time))
       return;
 
    int total_deals = HistoryDealsTotal();
-   int actual_trade_count = 0;
+   int hi;
 
-   for(int i = 0; i < total_deals; i++)
+   for(hi = 0; hi < total_deals; hi++)
    {
-      ulong ticket = HistoryDealGetTicket(i);
+      ulong ticket = HistoryDealGetTicket(hi);
       if(ticket == 0) continue;
 
       string deal_symbol = HistoryDealGetString(ticket, DEAL_SYMBOL);
@@ -275,6 +280,50 @@ void CalculateTradeStatistics(
       stats.total_commission += commission;
       stats.total_swap += swap;
    }
+#else // __MQL4__
+   int total_orders = OrdersHistoryTotal();
+   int oi;
+
+   for(oi = 0; oi < total_orders; oi++)
+   {
+      if(!OrderSelect(oi, SELECT_BY_POS, MODE_HISTORY)) continue;
+
+      // 決済済みチェック
+      datetime close_time = OrderCloseTime();
+      if(close_time == 0) continue;
+
+      // 期間チェック
+      if(close_time < start_time || close_time > end_time) continue;
+
+      // シンボルチェック
+      string order_symbol = OrderSymbol();
+      if(order_symbol != symbol) continue;
+
+      // マジックナンバーチェック
+      if(magic_number != -1)
+      {
+         long magic = OrderMagicNumber();
+         if(magic != magic_number) continue;
+      }
+
+      // オーダータイプチェック（売買のみ）
+      int order_type = OrderType();
+      if(order_type != OP_BUY && order_type != OP_SELL) continue;
+
+      // 実際の取引回数をカウント
+      actual_trade_count++;
+
+      // ロット数を集計
+      double volume = OrderLots();
+      stats.total_lots += volume;
+
+      // コミッションとスワップを集計
+      double commission = OrderCommission();
+      double swap = OrderSwap();
+      stats.total_commission += commission;
+      stats.total_swap += swap;
+   }
+#endif
 
    stats.trade_count = actual_trade_count;
 

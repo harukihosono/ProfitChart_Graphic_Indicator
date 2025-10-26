@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                           ProfitChart_Graphic.mq5 |
+//|                              ProfitChart_Graphic_Indicator.mq5    |
 //|                          CGraphicを使った独立損益チャート           |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025"
@@ -8,6 +8,7 @@
 #property indicator_chart_window
 #property indicator_buffers 0
 #property indicator_plots   0
+#property strict
 
 //--- 共通ヘッダーファイルをインクルード
 #include "ProfitChart_Common.mqh"
@@ -28,7 +29,11 @@ input bool   InpShowIndividual = true;          // 個別損益を表示
 input bool   InpShowCashback = false;           // キャッシュバック込みで表示
 
 //--- グローバル変数
-CGraphic g_graphic;
+#ifdef __MQL5__
+   CGraphic g_graphic;
+#else
+   CProfitChartCanvas g_graphic;
+#endif
 string g_symbol;
 datetime g_lastUpdate = 0;
 int g_lastDealCount = 0;
@@ -83,7 +88,20 @@ int OnInit()
    }
 
    //--- 初期データ読み込み
-   LoadTradeHistory();
+   LoadTradeHistory(g_trades, g_symbol, g_currentMagicNumber, g_currentPeriod, InpCashbackPer001Lot, InpShowCashback, g_lastDealCount);
+
+#ifdef __MQL4__
+   //--- MT4ユーザーへの注意喚起
+   int loaded_history = OrdersHistoryTotal();
+   if(loaded_history < 100)  // 少ない場合は警告
+   {
+      Alert("注意: 口座履歴が", loaded_history, "件のみ読み込まれています。\n\n",
+            "全ての履歴を表示するには:\n",
+            "1. MT4下部の「口座履歴」タブを右クリック\n",
+            "2. 「全期間」を選択\n",
+            "3. インジケーターをチャートから削除して再度追加");
+   }
+#endif
 
    //--- マジックナンバー一覧を取得
    GetUniqueMagicNumbers();
@@ -139,28 +157,12 @@ int OnCalculate(const int rates_total,
    datetime current_time = TimeCurrent();
    if(current_time - g_lastUpdate >= 5)
    {
-      LoadTradeHistory();
+      LoadTradeHistory(g_trades, g_symbol, g_currentMagicNumber, g_currentPeriod, InpCashbackPer001Lot, InpShowCashback, g_lastDealCount);
       UpdateChart();
       g_lastUpdate = current_time;
    }
 
    return(rates_total);
-}
-
-//+------------------------------------------------------------------+
-//| 取引履歴を読み込む                                                   |
-//+------------------------------------------------------------------+
-void LoadTradeHistory()
-{
-   LoadTradeHistoryMT5(
-      g_trades,
-      g_symbol,
-      g_currentMagicNumber,  // 現在選択中のマジックナンバーを使用
-      g_currentPeriod,  // 現在の期間を使用
-      InpCashbackPer001Lot,
-      InpShowCashback,
-      g_lastDealCount
-   );
 }
 
 //+------------------------------------------------------------------+
@@ -206,7 +208,7 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
       {
          g_currentPeriod = new_period;
          UpdateButtonStates();
-         LoadTradeHistory();
+         LoadTradeHistory(g_trades, g_symbol, g_currentMagicNumber, g_currentPeriod, InpCashbackPer001Lot, InpShowCashback, g_lastDealCount);
          UpdateChart();
       }
 
@@ -220,7 +222,7 @@ void OnChartEvent(const int id, const long &lparam, const double &dparam, const 
          {
             g_currentMagicNumber = new_magic_number;
             UpdateMagicNumberButtonStates();
-            LoadTradeHistory();
+            LoadTradeHistory(g_trades, g_symbol, g_currentMagicNumber, g_currentPeriod, InpCashbackPer001Lot, InpShowCashback, g_lastDealCount);
             UpdateChart();
          }
       }
@@ -325,7 +327,8 @@ void GetUniqueMagicNumbers()
    ArrayResize(g_magicNumbers, 1);
    g_magicNumbers[0] = -1;
 
-   // 取引履歴を選択
+#ifdef __MQL5__
+   // MT5版
    datetime start_time = 0;  // 全期間
    datetime end_time = TimeCurrent();
 
@@ -372,6 +375,46 @@ void GetUniqueMagicNumbers()
          g_magicNumbers[size] = mn;
       }
    }
+#else // __MQL4__
+   // MT4版
+   int total_orders = OrdersHistoryTotal();
+
+   for(int i = 0; i < total_orders; i++)
+   {
+      if(!OrderSelect(i, SELECT_BY_POS, MODE_HISTORY)) continue;
+
+      // 決済済みチェック
+      if(OrderCloseTime() == 0) continue;
+
+      // シンボルチェック
+      if(OrderSymbol() != g_symbol) continue;
+
+      // オーダータイプチェック（売買のみ）
+      int order_type = OrderType();
+      if(order_type != OP_BUY && order_type != OP_SELL) continue;
+
+      // マジックナンバーを取得
+      long mn = OrderMagicNumber();
+
+      // すでにリストにあるかチェック
+      bool exists = false;
+      for(int j = 0; j < ArraySize(g_magicNumbers); j++)
+      {
+         if(g_magicNumbers[j] == mn)
+         {
+            exists = true;
+            break;
+         }
+      }
+
+      if(!exists)
+      {
+         int size = ArraySize(g_magicNumbers);
+         ArrayResize(g_magicNumbers, size + 1);
+         g_magicNumbers[size] = mn;
+      }
+   }
+#endif
 }
 
 //+------------------------------------------------------------------+
@@ -600,24 +643,29 @@ void DeleteFolderButton()
 //+------------------------------------------------------------------+
 void OpenReportsFolder()
 {
+#ifdef __MQL5__
    string folder_path = TerminalInfoString(TERMINAL_DATA_PATH) + "\\MQL5\\Files\\Reports";
+#else
+   string folder_path = TerminalInfoString(TERMINAL_DATA_PATH) + "\\MQL4\\Files\\Reports";
+#endif
 
    // フォルダが存在しない場合は作成
-   if(!FolderCreate("Reports", FILE_COMMON))
+   if(!FolderCreate("Reports", 0))  // FILE_COMMONを使わず、ローカルフォルダに作成
    {
       int error_code = GetLastError();
       if(error_code != 0 && error_code != 5003)
       {
-         Alert("Failed to create Reports folder: ", error_code);
-         return;
+         Print("Failed to create Reports folder: ", error_code);
+         // エラーでも続行
       }
    }
 
    // エクスプローラーでフォルダを開く
+   Print("Opening folder: ", folder_path);
    int result = ShellExecuteW(0, "open", folder_path, "", "", 1);
    if(result <= 32)
    {
-      Alert("Failed to open folder.\nPath: " + folder_path);
+      Alert("フォルダを開けませんでした。\n手動で開いてください:\n" + folder_path);
    }
 }
 
@@ -632,7 +680,7 @@ void GenerateAndOpenHTML()
 
    // Create Reports folder
    string folder = "Reports";
-   if(!FolderCreate(folder, FILE_COMMON))
+   if(!FolderCreate(folder, 0))  // FILE_COMMONを使わず、ローカルフォルダに作成
    {
       // Error code 5003 means folder already exists - that's OK
       int error_code = GetLastError();
@@ -647,16 +695,23 @@ void GenerateAndOpenHTML()
    StringReplace(timestamp, ":", "");
    StringReplace(timestamp, " ", "_");
    string filename = folder + "\\ProfitChart_Report_" + timestamp + ".html";
+
+#ifdef __MQL5__
    string filepath = TerminalInfoString(TERMINAL_DATA_PATH) + "\\MQL5\\Files\\" + filename;
+#else
+   string filepath = TerminalInfoString(TERMINAL_DATA_PATH) + "\\MQL4\\Files\\" + filename;
+#endif
 
    // Generate HTML content
    string html = GenerateHTMLContent(stats);
 
-   // Write to file
+   // Write to file (ローカルフォルダに保存)
    int file_handle = FileOpen(filename, FILE_WRITE|FILE_TXT|FILE_ANSI);
    if(file_handle == INVALID_HANDLE)
    {
-      Alert("Failed to create HTML file: ", GetLastError());
+      int err = GetLastError();
+      Alert("HTMLファイルの作成に失敗しました。エラー: " + IntegerToString(err));
+      Print("Failed to create HTML file: ", err, " | Path: ", filename);
       return;
    }
 
@@ -666,15 +721,18 @@ void GenerateAndOpenHTML()
    Print("HTML report generated: ", filepath);
 
    // Open HTML file automatically in browser
+   Print("Attempting to open file: ", filepath);
    int result = ShellExecuteW(0, "open", filepath, "", "", 1);
+   Print("ShellExecuteW result: ", result);
+
    if(result <= 32)
    {
       // If failed to open, show path in alert
-      Alert("HTML report generated.\nPlease open manually:\n" + filepath);
+      Alert("HTMLレポートを生成しました。\n手動で開いてください:\n" + filepath);
    }
    else
    {
-      Alert("HTML report generated and opened in browser!");
+      Alert("HTMLレポートを生成し、ブラウザで開きました！");
    }
 }
 

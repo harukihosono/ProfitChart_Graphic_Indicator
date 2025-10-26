@@ -36,6 +36,9 @@ struct TradeStatistics
    int trade_count;          // 取引回数
    double total_profit;      // 総利益
    double total_loss;        // 総損失
+   double net_profit;        // トータル損益（総利益 - 総損失）
+   double total_commission;  // 総手数料
+   double total_swap;        // 総スワップ
 };
 
 //+------------------------------------------------------------------+
@@ -198,6 +201,9 @@ void CalculateTradeStatistics(
    stats.trade_count = 0;
    stats.total_profit = 0.0;
    stats.total_loss = 0.0;
+   stats.net_profit = 0.0;
+   stats.total_commission = 0.0;
+   stats.total_swap = 0.0;
 
    int trade_count = ArraySize(trades);
    if(trade_count == 0) return;
@@ -229,7 +235,7 @@ void CalculateTradeStatistics(
          stats.max_drawdown = drawdown;
    }
 
-   // 取引回数とロット数を履歴から直接カウント
+   // 取引回数、ロット数、コミッション、スワップを履歴から直接カウント
    datetime start_time = GetStartDateFromPeriod(period);
    datetime end_time = TimeCurrent();
 
@@ -259,10 +265,20 @@ void CalculateTradeStatistics(
       // 実際の取引回数をカウント
       actual_trade_count++;
 
+      // ロット数を集計
       double volume = HistoryDealGetDouble(ticket, DEAL_VOLUME);
       stats.total_lots += volume;
+
+      // コミッションとスワップを集計
+      double commission = HistoryDealGetDouble(ticket, DEAL_COMMISSION);
+      double swap = HistoryDealGetDouble(ticket, DEAL_SWAP);
+      stats.total_commission += commission;
+      stats.total_swap += swap;
    }
 
    stats.trade_count = actual_trade_count;
+
+   // トータル損益を計算（総利益 - 総損失）
+   stats.net_profit = stats.total_profit - stats.total_loss;
 }
 //+------------------------------------------------------------------+

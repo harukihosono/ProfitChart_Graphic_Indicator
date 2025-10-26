@@ -437,63 +437,79 @@ void CreateStatsTable()
    // チャートの右側に配置
    int x = InpChartX + InpChartWidth + 30;
    int y = InpChartY + 50;
-   int line_height = 30;  // 25から30に増加
-   int font_size = 11;    // 12から11に減少
+   int line_height = 28;
+   int font_size = 11;
    int padding = 10;
    color text_color = clrWhite;
    string font_name = "Arial";
 
    // 背景パネルを作成
    int panel_width = 350;
-   int panel_height = 230;
+   int panel_height = 290;  // 高さを増やして新しい項目を追加
    ObjectDelete(0, LBL_STATS_BG);
    ObjectCreate(0, LBL_STATS_BG, OBJ_RECTANGLE_LABEL, 0, 0, 0);
    ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_XDISTANCE, x - padding);
    ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_YDISTANCE, y - padding);
    ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_XSIZE, panel_width);
    ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_YSIZE, panel_height);
-   ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_BGCOLOR, clrBlack);  // 黒背景
+   ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_BGCOLOR, clrBlack);
    ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_BORDER_TYPE, BORDER_FLAT);
    ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_CORNER, CORNER_LEFT_UPPER);
-   ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_COLOR, clrYellow);  // 黄色の枠線
-   ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_WIDTH, 2);  // 枠線を太く
-   ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_BACK, false);  // 前面に表示
+   ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_COLOR, clrYellow);
+   ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_WIDTH, 2);
+   ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_BACK, false);
    ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_SELECTABLE, false);
    ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_HIDDEN, true);
-   ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_ZORDER, 0);  // 最背面
+   ObjectSetInteger(0, LBL_STATS_BG, OBJPROP_ZORDER, 0);
 
    // テーブルヘッダー
-   CreateLabel(LBL_STATS_BASE + "Header", "=== 統計情報 ===", x, y, font_size + 3, clrYellow, font_name);
+   CreateLabel(LBL_STATS_BASE + "Header", "=== Statistics ===", x, y, font_size + 3, clrYellow, font_name);
    y += line_height + 5;
 
-   // PF (Profit Factor)
+   // Net Profit (トータル損益)
+   color net_color = (stats.net_profit >= 0) ? clrLime : clrRed;
+   string net_text = "Net Profit: " + FormatNumberWithCommas(stats.net_profit);
+   CreateLabel(LBL_STATS_BASE + "NetProfit", net_text, x, y, font_size, net_color, font_name);
+   y += line_height;
+
+   // Profit Factor
    string pf_text = StringFormat("Profit Factor: %.2f", stats.profit_factor);
    CreateLabel(LBL_STATS_BASE + "PF", pf_text, x, y, font_size, text_color, font_name);
    y += line_height;
 
-   // 最大DD（マイナス表示、カンマ区切り）
+   // Max Drawdown
    string dd_text = "Max Drawdown: -" + FormatNumberWithCommas(stats.max_drawdown);
    CreateLabel(LBL_STATS_BASE + "DD", dd_text, x, y, font_size, text_color, font_name);
    y += line_height;
 
-   // 総ロット数
-   string lots_text = StringFormat("Total Lots: %.2f", stats.total_lots);
-   CreateLabel(LBL_STATS_BASE + "Lots", lots_text, x, y, font_size, text_color, font_name);
-   y += line_height;
-
-   // 取引回数（カンマ区切り）
-   string trades_text = "Trade Count: " + FormatNumberWithCommas((double)stats.trade_count);
-   CreateLabel(LBL_STATS_BASE + "Trades", trades_text, x, y, font_size, text_color, font_name);
-   y += line_height;
-
-   // 総利益（カンマ区切り）
+   // Total Profit
    string profit_text = "Total Profit: " + FormatNumberWithCommas(stats.total_profit);
    CreateLabel(LBL_STATS_BASE + "Profit", profit_text, x, y, font_size, text_color, font_name);
    y += line_height;
 
-   // 総損失（マイナス表示、カンマ区切り）
+   // Total Loss
    string loss_text = "Total Loss: -" + FormatNumberWithCommas(stats.total_loss);
    CreateLabel(LBL_STATS_BASE + "Loss", loss_text, x, y, font_size, text_color, font_name);
+   y += line_height;
+
+   // Trade Count
+   string trades_text = "Trade Count: " + FormatNumberWithCommas((double)stats.trade_count);
+   CreateLabel(LBL_STATS_BASE + "Trades", trades_text, x, y, font_size, text_color, font_name);
+   y += line_height;
+
+   // Total Lots
+   string lots_text = StringFormat("Total Lots: %.2f", stats.total_lots);
+   CreateLabel(LBL_STATS_BASE + "Lots", lots_text, x, y, font_size, text_color, font_name);
+   y += line_height;
+
+   // Total Commission
+   string commission_text = "Commission: " + FormatNumberWithCommas(stats.total_commission);
+   CreateLabel(LBL_STATS_BASE + "Commission", commission_text, x, y, font_size, text_color, font_name);
+   y += line_height;
+
+   // Total Swap
+   string swap_text = "Swap: " + FormatNumberWithCommas(stats.total_swap);
+   CreateLabel(LBL_STATS_BASE + "Swap", swap_text, x, y, font_size, text_color, font_name);
 }
 
 //+------------------------------------------------------------------+
@@ -524,12 +540,15 @@ void DeleteStatsTable()
 {
    ObjectDelete(0, LBL_STATS_BG);
    ObjectDelete(0, LBL_STATS_BASE + "Header");
+   ObjectDelete(0, LBL_STATS_BASE + "NetProfit");
    ObjectDelete(0, LBL_STATS_BASE + "PF");
    ObjectDelete(0, LBL_STATS_BASE + "DD");
-   ObjectDelete(0, LBL_STATS_BASE + "Lots");
-   ObjectDelete(0, LBL_STATS_BASE + "Trades");
    ObjectDelete(0, LBL_STATS_BASE + "Profit");
    ObjectDelete(0, LBL_STATS_BASE + "Loss");
+   ObjectDelete(0, LBL_STATS_BASE + "Trades");
+   ObjectDelete(0, LBL_STATS_BASE + "Lots");
+   ObjectDelete(0, LBL_STATS_BASE + "Commission");
+   ObjectDelete(0, LBL_STATS_BASE + "Swap");
 }
 
 //+------------------------------------------------------------------+
@@ -679,8 +698,9 @@ string GenerateHTMLContent(const TradeStatistics &stats)
    html += "h1 { color: #ffcc00; border-bottom: 2px solid #ffcc00; padding-bottom: 15px; margin-bottom: 10px; font-size: 32px; }\n";
    html += "h2 { color: #ffcc00; margin-top: 35px; margin-bottom: 20px; font-size: 24px; }\n";
    html += ".container { max-width: 1600px; margin: 0 auto; }\n";
-   html += ".header-info { margin-bottom: 30px; color: #aaa; font-size: 14px; }\n";
-   html += ".stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin: 20px 0; }\n";
+   html += ".header-info { margin-bottom: 10px; color: #aaa; font-size: 14px; }\n";
+   html += ".period-info { margin-bottom: 30px; color: #fff; font-size: 22px; font-weight: 500; }\n";
+   html += ".stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0; }\n";
    html += ".stat-card { background: #2a2a2a; padding: 18px; border-radius: 8px; border: 1px solid #444; text-align: center; }\n";
    html += ".stat-label { font-size: 13px; color: #aaa; margin-bottom: 8px; }\n";
    html += ".stat-value { font-size: 22px; font-weight: bold; color: #ffcc00; }\n";
@@ -708,11 +728,28 @@ string GenerateHTMLContent(const TradeStatistics &stats)
    else
       title += " (MN:" + IntegerToString(g_currentMagicNumber) + ")";
    html += "<h1>" + title + "</h1>\n";
+
+   // Add period information
+   int trade_count = ArraySize(g_trades);
+   if(trade_count > 0)
+   {
+      string start_date = TimeToString(g_trades[0].time, TIME_DATE);
+      string end_date = TimeToString(g_trades[trade_count - 1].time, TIME_DATE);
+      html += "<div class='period-info'>Period: " + start_date + " - " + end_date + "</div>\n";
+   }
+
    html += "<div class='header-info'>Generated: " + TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS) + "</div>\n";
 
    // Statistics Cards
    html += "<h2>Statistics</h2>\n";
    html += "<div class='stats-grid'>\n";
+
+   // Row 1: Main metrics
+   html += "<div class='stat-card'>\n";
+   html += "<div class='stat-label'>Net Profit</div>\n";
+   string net_profit_class = (stats.net_profit >= 0) ? "profit" : "loss";
+   html += "<div class='stat-value " + net_profit_class + "'>" + FormatNumberWithCommas(stats.net_profit) + "</div>\n";
+   html += "</div>\n";
 
    html += "<div class='stat-card'>\n";
    html += "<div class='stat-label'>Profit Factor</div>\n";
@@ -724,16 +761,7 @@ string GenerateHTMLContent(const TradeStatistics &stats)
    html += "<div class='stat-value loss'>-" + FormatNumberWithCommas(stats.max_drawdown) + "</div>\n";
    html += "</div>\n";
 
-   html += "<div class='stat-card'>\n";
-   html += "<div class='stat-label'>Total Lots</div>\n";
-   html += "<div class='stat-value'>" + DoubleToString(stats.total_lots, 2) + "</div>\n";
-   html += "</div>\n";
-
-   html += "<div class='stat-card'>\n";
-   html += "<div class='stat-label'>Trade Count</div>\n";
-   html += "<div class='stat-value'>" + IntegerToString(stats.trade_count) + "</div>\n";
-   html += "</div>\n";
-
+   // Row 2: Profit/Loss details
    html += "<div class='stat-card'>\n";
    html += "<div class='stat-label'>Total Profit</div>\n";
    html += "<div class='stat-value profit'>" + FormatNumberWithCommas(stats.total_profit) + "</div>\n";
@@ -742,6 +770,28 @@ string GenerateHTMLContent(const TradeStatistics &stats)
    html += "<div class='stat-card'>\n";
    html += "<div class='stat-label'>Total Loss</div>\n";
    html += "<div class='stat-value loss'>-" + FormatNumberWithCommas(stats.total_loss) + "</div>\n";
+   html += "</div>\n";
+
+   html += "<div class='stat-card'>\n";
+   html += "<div class='stat-label'>Trade Count</div>\n";
+   html += "<div class='stat-value'>" + IntegerToString(stats.trade_count) + "</div>\n";
+   html += "</div>\n";
+
+   // Row 3: Volume and costs
+   html += "<div class='stat-card'>\n";
+   html += "<div class='stat-label'>Total Lots</div>\n";
+   html += "<div class='stat-value'>" + DoubleToString(stats.total_lots, 2) + "</div>\n";
+   html += "</div>\n";
+
+   html += "<div class='stat-card'>\n";
+   html += "<div class='stat-label'>Total Commission</div>\n";
+   string commission_class = (stats.total_commission >= 0) ? "" : "loss";
+   html += "<div class='stat-value " + commission_class + "'>" + FormatNumberWithCommas(stats.total_commission) + "</div>\n";
+   html += "</div>\n";
+
+   html += "<div class='stat-card'>\n";
+   html += "<div class='stat-label'>Total Swap</div>\n";
+   html += "<div class='stat-value'>" + FormatNumberWithCommas(stats.total_swap) + "</div>\n";
    html += "</div>\n";
 
    html += "</div>\n";
@@ -766,7 +816,6 @@ string GenerateHTMLContent(const TradeStatistics &stats)
    html += "</thead>\n";
    html += "<tbody>\n";
 
-   int trade_count = ArraySize(g_trades);
    // Determine if we should show time based on period
    bool show_time = (g_currentPeriod == PERIOD_1D || g_currentPeriod == PERIOD_1W);
    int time_format = show_time ? (TIME_DATE|TIME_SECONDS) : TIME_DATE;

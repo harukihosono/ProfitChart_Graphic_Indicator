@@ -4,6 +4,15 @@ MetaTrader 5（MT5）およびMetaTrader 4（MT4）用の包括的な損益チ�
 
 ![ProfitChart Graphic Indicator スクリーンショット](screenshot.png)
 
+## ダウンロード
+
+コンパイル済みファイルを直接ダウンロードできます：
+
+- **MT5版**: [ProfitChart_Graphic_Indicator.ex5](https://github.com/harukihosono/ProfitChart_Graphic_Indicator/releases/download/1/ProfitChart_Graphic_Indicator.ex5)
+- **MT4版**: [ProfitChart_Graphic_Indicator.ex4](https://github.com/harukihosono/ProfitChart_Graphic_Indicator/releases/download/1/ProfitChart_Graphic_Indicator.ex4)
+
+ダウンロード後、MT5/MT4のデータフォルダの`Indicators`フォルダに配置してください。
+
 ## 主な機能
 
 ### ビジュアルチャート表示

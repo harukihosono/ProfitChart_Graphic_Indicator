@@ -4,6 +4,15 @@ A comprehensive profit/loss chart indicator for MetaTrader 5 (MT5) and MetaTrade
 
 ![ProfitChart Graphic Indicator Screenshot](screenshot.png)
 
+## Download
+
+Download the compiled files directly:
+
+- **MT5 Version**: [ProfitChart_Graphic_Indicator.ex5](https://github.com/harukihosono/ProfitChart_Graphic_Indicator/releases/download/1/ProfitChart_Graphic_Indicator.ex5)
+- **MT4 Version**: [ProfitChart_Graphic_Indicator.ex4](https://github.com/harukihosono/ProfitChart_Graphic_Indicator/releases/download/1/ProfitChart_Graphic_Indicator.ex4)
+
+After downloading, place the file in the `Indicators` folder of your MT5/MT4 data directory.
+
 ## Features
 
 ### Visual Chart Display

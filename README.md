@@ -2,6 +2,8 @@
 
 A comprehensive profit/loss chart indicator for MetaTrader 5 (MT5) and MetaTrader 4 (MT4) with HTML export functionality and detailed trade statistics.
 
+![ProfitChart Graphic Indicator Screenshot](screenshot.png)
+
 ## Features
 
 ### Visual Chart Display

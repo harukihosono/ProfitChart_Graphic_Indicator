@@ -1,5 +1,6 @@
 *.log
 *.png
+!screenshot.png
 *.ps1
 *.ex4
 *.ex5

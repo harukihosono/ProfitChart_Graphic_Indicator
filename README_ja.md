@@ -2,6 +2,8 @@
 
 MetaTrader 5（MT5）およびMetaTrader 4（MT4）用の包括的な損益チャートインジケーター。HTML出力機能と詳細な取引統計を搭載。
 
+![ProfitChart Graphic Indicator スクリーンショット](screenshot.png)
+
 ## 主な機能
 
 ### ビジュアルチャート表示
